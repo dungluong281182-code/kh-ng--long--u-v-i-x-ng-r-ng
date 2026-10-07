@@ -2,77 +2,197 @@ import streamlit as st
 import streamlit.components.v1 as components
 
 st.set_page_config(
-    page_title="Dino vs Cactus - Realtime Arcade",
-    page_icon="🦖",
-    layout="centered",
+    page_title="Dino Pixel Arcade 8-Bit", page_icon="🦖", layout="centered"
 )
 
-st.title("☀️ DINO VS CACTUS (REALTIME ARCADE)")
+st.title("🦖 DINO 8-BIT PIXEL RETRO")
 
-# Nhúng Game HTML5 Canvas chạy siêu mượt bằng bàn phím
+# Game Canvas HTML5 / JS - Đồ họa Pixel 8-Bit
 game_html = """
 <!DOCTYPE html>
 <html>
 <head>
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+
         body {
             margin: 0;
             background-color: #00bbf9;
-            font-family: 'Courier New', Courier, monospace;
+            font-family: 'Press Start 2P', cursive;
             display: flex;
             justify-content: center;
             align-items: center;
             flex-direction: column;
             color: white;
+            user-select: none;
         }
         canvas {
-            background-color: #00bbf9;
+            background-color: #4eb5e5;
             border: 4px solid #ffffff;
-            border-radius: 10px;
+            border-radius: 8px;
             box-shadow: 0px 6px 0px #0077b6;
+            image-rendering: pixelated; /* Khử nhòe để nét chuẩn Pixel 8-bit */
+            image-rendering: crisp-edges;
         }
         .info {
-            margin-top: 10px;
-            font-weight: bold;
-            font-size: 14px;
-            text-shadow: 1px 1px 2px #000;
+            margin-top: 12px;
+            font-size: 10px;
+            text-shadow: 2px 2px 0px #000;
+            letter-spacing: 1px;
+            text-align: center;
+            line-height: 1.6;
         }
     </style>
 </head>
 <body>
     <canvas id="gameCanvas" width="600" height="200"></canvas>
     <div class="info">
-        🎮 CONTROLS: [ ArrowUp / W ] JUMP | [ J / ArrowDown ] CROUCH / LEAN | [ Space ] RESTART
+        🎮 CONTROLS:<br>
+        [ ↑ / W ] JUMP | [ J / ↓ ] CROUCH & LEAN | [ SPACE ] RESTART
     </div>
 
     <script>
         const canvas = document.getElementById("gameCanvas");
         const ctx = canvas.getContext("2d");
+        ctx.imageSmoothingEnabled = false; // Bật render pixel sắc nét
 
         let score = 0;
         let highScore = 0;
         let gameOver = false;
-        let gameSpeed = 4;
+        let gameSpeed = 5;
+        let frameCount = 0;
 
-        // Khủng long
+        // --- VẼ ĐỒ HỌA PIXEL ART BẰNG CANVAS (8-BIT SPRITES) ---
+        
+        // 1. Pixel Dino (Đứng / Chạy)
+        function drawPixelDinoRun(x, y, frame) {
+            ctx.fillStyle = "#535353";
+            // Đầu & Thân
+            ctx.fillRect(x + 12, y, 16, 12);
+            ctx.fillRect(x + 20, y + 4, 12, 4);
+            ctx.fillRect(x + 8, y + 12, 16, 16);
+            ctx.fillRect(x, y + 16, 8, 8); // Đuôi
+            // Mắt Pixel
+            ctx.fillStyle = "#ffffff";
+            ctx.fillRect(x + 16, y + 4, 4, 4);
+
+            // Chân (Chạy đổi chân)
+            ctx.fillStyle = "#535353";
+            if (frame % 10 < 5) {
+                ctx.fillRect(x + 8, y + 28, 4, 8);
+                ctx.fillRect(x + 18, y + 28, 4, 4);
+            } else {
+                ctx.fillRect(x + 8, y + 28, 4, 4);
+                ctx.fillRect(x + 18, y + 28, 4, 8);
+            }
+        }
+
+        // 2. Pixel Dino Cúi Thấp / Nghiêng Người / Chân Dài (Cúi Núp Chim)
+        function drawPixelDinoCrouch(x, y, frame) {
+            ctx.fillStyle = "#535353";
+            // Thân dài nghiêng ngang
+            ctx.fillRect(x, y + 16, 28, 10);
+            ctx.fillRect(x + 24, y + 12, 12, 10); // Đầu hạ thấp
+            ctx.fillRect(x - 6, y + 14, 8, 6);   // Đuôi duỗi
+            // Mắt
+            ctx.fillStyle = "#ffffff";
+            ctx.fillRect(x + 30, y + 14, 3, 3);
+
+            // Chân duỗi dài bò trườn
+            ctx.fillStyle = "#535353";
+            if (frame % 8 < 4) {
+                ctx.fillRect(x + 2, y + 26, 8, 4);
+                ctx.fillRect(x + 18, y + 26, 10, 4);
+            } else {
+                ctx.fillRect(x + 4, y + 26, 10, 4);
+                ctx.fillRect(x + 20, y + 26, 6, 4);
+            }
+        }
+
+        // 3. Pixel Dino Nhảy
+        function drawPixelDinoJump(x, y) {
+            ctx.fillStyle = "#535353";
+            ctx.fillRect(x + 12, y, 16, 12);
+            ctx.fillRect(x + 20, y + 4, 12, 4);
+            ctx.fillRect(x + 8, y + 12, 16, 16);
+            ctx.fillRect(x, y + 16, 8, 8);
+            ctx.fillStyle = "#ffffff";
+            ctx.fillRect(x + 16, y + 4, 4, 4);
+
+            // Chân co lên
+            ctx.fillStyle = "#535353";
+            ctx.fillRect(x + 8, y + 28, 6, 4);
+            ctx.fillRect(x + 16, y + 28, 6, 4);
+        }
+
+        // 4. Pixel Cactus (Xương Rồng)
+        function drawPixelCactus(x, y) {
+            ctx.fillStyle = "#2d6a4f";
+            ctx.fillRect(x + 8, y, 8, 32);
+            ctx.fillRect(x, y + 8, 8, 12);
+            ctx.fillRect(x, y + 8, 16, 4);
+            ctx.fillRect(x + 16, y + 12, 8, 12);
+            ctx.fillRect(x + 8, y + 12, 16, 4);
+        }
+
+        // 5. Pixel Poison Flower (Hoa Độc 8-bit)
+        function drawPixelFlower(x, y) {
+            // Thân gai
+            ctx.fillStyle = "#1b4332";
+            ctx.fillRect(x + 10, y + 14, 4, 18);
+            ctx.fillRect(x + 6, y + 18, 4, 4);
+            // Cánh hoa tím/đỏ độc
+            ctx.fillStyle = "#d90429";
+            ctx.fillRect(x + 4, y + 2, 16, 14);
+            ctx.fillStyle = "#7209b7";
+            ctx.fillRect(x, y + 6, 24, 6);
+            // Nhụy hoa
+            ctx.fillStyle = "#ffb703";
+            ctx.fillRect(x + 8, y + 6, 8, 6);
+        }
+
+        // 6. Pixel Bird (Chim Pterodactyl Bay)
+        function drawPixelBird(x, y, frame) {
+            ctx.fillStyle = "#222222";
+            ctx.fillRect(x + 8, y + 6, 16, 8); // Thân
+            ctx.fillRect(x, y + 8, 8, 4);   // Mỏ
+
+            // Cánh đập lên xuống
+            if (frame % 12 < 6) {
+                ctx.fillRect(x + 10, y - 6, 6, 12); // Cánh giơ lên
+            } else {
+                ctx.fillRect(x + 10, y + 12, 6, 12); // Cánh xòe xuống
+            }
+        }
+
+        // --- KHỞI TẠO ĐỐI TƯỢNG ---
         const dino = {
             x: 50,
-            y: 130,
-            width: 35,
-            height: 40,
+            y: 120,
+            width: 28,
+            height: 36,
             dy: 0,
-            gravity: 0.6,
-            jumpForce: -11,
+            gravity: 0.7,
+            jumpForce: -12,
             isJumping: false,
             isCrouching: false,
-            draw() {
-                ctx.font = this.isCrouching ? "28px serif" : "34px serif";
-                if (this.isJumping) {
-                    ctx.fillText("🦘", this.x, this.y);
-                } else if (this.isCrouching) {
-                    ctx.fillText("🦕", this.x, this.y + 10); // Nghiêng người cúi thấp
+            update() {
+                this.y += this.dy;
+                if (this.y + this.dy < 120) {
+                    this.dy += this.gravity;
                 } else {
-                    ctx.fillText("🦖", this.x, this.y);
+                    this.dy = 0;
+                    this.isJumping = false;
+                    this.y = 120;
+                }
+
+                // Vẽ Dino
+                if (this.isJumping) {
+                    drawPixelDinoJump(this.x, this.y);
+                } else if (this.isCrouching) {
+                    drawPixelDinoCrouch(this.x, this.y + 6, frameCount);
+                } else {
+                    drawPixelDinoRun(this.x, this.y, frameCount);
                 }
             },
             jump() {
@@ -85,145 +205,58 @@ game_html = """
                 if (!this.isJumping) {
                     this.isCrouching = state;
                 }
-            },
-            update() {
-                this.y += this.dy;
-                if (this.y + this.dy < 130) {
-                    this.dy += this.gravity;
-                } else {
-                    this.dy = 0;
-                    this.isJumping = false;
-                    this.y = 130;
-                }
-                this.draw();
             }
         };
 
-        // Danh sách chướng ngại vật
         let obstacles = [];
-        const types = [
-            { icon: "🌵", type: "low", width: 25, height: 30, y: 130 },
-            { icon: "🌺", type: "low", width: 25, height: 30, y: 130 },
-            { icon: "🦇", type: "high", width: 30, height: 25, y: 85 } // Chim bay tầm cao
-        ];
-
         function spawnObstacle() {
             if (gameOver) return;
-            const chosen = types[Math.floor(Math.random() * types.length)];
-            obstacles.push({
-                x: canvas.width,
-                y: chosen.y,
-                width: chosen.width,
-                height: chosen.height,
-                icon: chosen.icon,
-                type: chosen.type
-            });
+            const rand = Math.random();
+            if (rand < 0.4) {
+                obstacles.push({ x: canvas.width, y: 124, width: 24, height: 32, type: "cactus" });
+            } else if (rand < 0.7) {
+                obstacles.push({ x: canvas.width, y: 124, width: 24, height: 32, type: "flower" });
+            } else {
+                obstacles.push({ x: canvas.width, y: 80, width: 24, height: 20, type: "bird" });
+            }
             
-            let nextTime = Math.random() * 1500 + 1000;
+            let nextTime = Math.random() * 1200 + 900;
             setTimeout(spawnObstacle, nextTime);
         }
 
-        // Bắt sự kiện bàn phím
+        // BÀN PHÍM
         window.addEventListener("keydown", (e) => {
-            if (e.key === "ArrowUp" || e.key === "w" || e.key === "W") {
-                dino.jump();
-            }
-            if (e.key === "j" || e.key === "J" || e.key === "ArrowDown" || e.key === "s") {
-                dino.crouch(true);
-            }
-            if (e.key === " " && gameOver) {
-                restartGame();
-            }
+            if (e.key === "ArrowUp" || e.key === "w" || e.key === "W") dino.jump();
+            if (e.key === "j" || e.key === "J" || e.key === "ArrowDown" || e.key === "s") dino.crouch(true);
+            if (e.key === " " && gameOver) restartGame();
         });
 
         window.addEventListener("keyup", (e) => {
-            if (e.key === "j" || e.key === "J" || e.key === "ArrowDown" || e.key === "s") {
-                dino.crouch(false);
-            }
+            if (e.key === "j" || e.key === "J" || e.key === "ArrowDown" || e.key === "s") dino.crouch(false);
         });
 
         function restartGame() {
             score = 0;
             obstacles = [];
             gameOver = false;
-            dino.y = 130;
+            dino.y = 120;
             dino.dy = 0;
             dino.isJumping = false;
             dino.isCrouching = false;
             loop();
         }
 
+        // GAME LOOP
         function loop() {
             if (gameOver) return;
+            frameCount++;
 
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            // Vẽ Mặt đất
-            ctx.fillStyle = "#70e000";
-            ctx.fillRect(0, 155, canvas.width, 45);
-            ctx.strokeStyle = "#ffffff";
-            ctx.lineWidth = 3;
-            ctx.beginPath();
-            ctx.moveTo(0, 155);
-            ctx.lineTo(canvas.width, 155);
-            ctx.stroke();
-
-            // Cập nhật Khủng long
-            dino.update();
-
-            // Cập nhật Chướng ngại vật
-            for (let i = 0; i < obstacles.length; i++) {
-                let obs = obstacles[i];
-                obs.x -= gameSpeed;
-
-                ctx.font = "28px serif";
-                ctx.fillText(obs.icon, obs.x, obs.y);
-
-                // Va chạm
-                let dinoHitY = dino.isCrouching ? dino.y + 15 : dino.y;
-                let dinoHitHeight = dino.isCrouching ? 20 : dino.height;
-
-                if (
-                    dino.x < obs.x + obs.width &&
-                    dino.x + dino.width > obs.x &&
-                    dinoHitY < obs.y + obs.height &&
-                    dinoHitY + dinoHitHeight > obs.y - 15
-                ) {
-                    gameOver = true;
-                }
-            }
-
-            // Xóa chướng ngại vật ra khỏi màn hình
-            obstacles = obstacles.filter(obs => obs.x > -50);
-
-            // Điểm số
-            score++;
-            if (score > highScore) highScore = score;
-
+            // Bầu trời & Mây Pixel
             ctx.fillStyle = "#ffffff";
-            ctx.font = "bold 14px monospace";
-            ctx.fillText(`HI: ${Math.floor(highScore)}  SCORE: ${Math.floor(score)}`, 420, 25);
+            ctx.fillRect(100 - (frameCount % 600), 30, 32, 10);
+            ctx.fillRect(350 - (frameCount % 600), 45, 40, 12);
 
-            if (gameOver) {
-                ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
-                ctx.fillStyle = "#ff4d6d";
-                ctx.font = "bold 24px monospace";
-                ctx.fillText("GAME OVER!", 230, 90);
-                ctx.fillStyle = "#ffffff";
-                ctx.font = "14px monospace";
-                ctx.fillText("Press SPACE to Restart", 210, 120);
-            } else {
-                requestAnimationFrame(loop);
-            }
-        }
-
-        spawnObstacle();
-        loop();
-    </script>
-</body>
-</html>
-"""
-
-# Render ứng dụng
-components.html(game_html, height=280)
+            // Mặt đất Pixel
+            ctx.fillStyle = "#55a
